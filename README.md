@@ -68,7 +68,7 @@ numastat -p <pid>
 
 ```bash
 make docker-build
-make docker-push  # Pushes to registry.local:5000
+make docker-push  # Pushes to registry.local:5000 - adjust as needed.
 ```
 
 ### Deploy

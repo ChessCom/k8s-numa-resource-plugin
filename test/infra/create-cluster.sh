@@ -155,6 +155,7 @@ EOF
 }
 
 # Registry cloud-init
+# Test cluster only — not for production
 REGISTRY_USERDATA=$(cat <<EOF
 #cloud-config
 users:
@@ -179,6 +180,7 @@ EOF
 )
 
 # Server cloud-init
+# Test cluster only — not for production
 SERVER_USERDATA=$(cat <<EOF
 #cloud-config
 users:
@@ -232,6 +234,7 @@ EOF
 )
 
 # Worker cloud-init function
+# Test cluster only — not for production
 worker_userdata() {
     cat <<EOF
 #cloud-config

@@ -25,7 +25,7 @@ spec:
       containers:
         - name: numa-plugin
           # Replace with your registry/image before deploying
-          image: registry.local:5000/numa-resource-plugin:latest
+          image: <your-registry>:5000/numa-resource-plugin:latest
           imagePullPolicy: Always
           securityContext:
             privileged: false
