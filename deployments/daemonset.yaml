@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: numa-resource-plugin
+  namespace: kube-system
+  labels:
+    app: numa-resource-plugin
+spec:
+  selector:
+    matchLabels:
+      app: numa-resource-plugin
+  template:
+    metadata:
+      labels:
+        app: numa-resource-plugin
+    spec:
+      serviceAccountName: numa-resource-plugin
+      priorityClassName: system-node-critical
+      tolerations:
+        # Run on all nodes including control plane
+        - operator: Exists
+          effect: NoSchedule
+        - operator: Exists
+          effect: NoExecute
+      containers:
+        - name: numa-plugin
+          # Replace with your registry/image before deploying
+          image: registry.local:5000/numa-resource-plugin:latest
+          imagePullPolicy: Always
+          securityContext:
+            privileged: false
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          envFrom:
+            - configMapRef:
+                name: numa-resource-plugin-config
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "ls /var/lib/kubelet/device-plugins/numa-*.sock >/dev/null 2>&1"
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          volumeMounts:
+            # Standard kubelet device-plugins directory
+            - name: device-plugin-kubelet
+              mountPath: /var/lib/kubelet/device-plugins
+            # Read NUMA topology from /sys
+            - name: sys
+              mountPath: /sys
+              readOnly: true
+      volumes:
+        - name: device-plugin-kubelet
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+            type: DirectoryOrCreate
+        - name: sys
+          hostPath:
+            path: /sys
+            type: Directory
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1

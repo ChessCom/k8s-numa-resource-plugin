@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: numa-resource-plugin-config
+  namespace: kube-system
+data:
+  # Capacity per NUMA node (default: 100)
+  # Higher values allow more pods to request the same NUMA node
+  NUMA_CAPACITY: "100"

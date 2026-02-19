@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-multi-numa-1-a
+  namespace: default
+spec:
+  containers:
+    - name: test
+      image: busybox:latest
+      command: ["sh", "-c", "echo POD=A NUMA_NODE=$NUMA_NODE && cat /proc/self/status | grep -E '(Cpus_allowed|Mems_allowed)' && sleep infinity"]
+      resources:
+        requests:
+          cpu: "1"
+          memory: 256Mi
+          numa-align/numa-1: 1
+        limits:
+          cpu: "1"
+          memory: 256Mi
+          numa-align/numa-1: 1
+  restartPolicy: Never
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-multi-numa-1-b
+  namespace: default
+spec:
+  containers:
+    - name: test
+      image: busybox:latest
+      command: ["sh", "-c", "echo POD=B NUMA_NODE=$NUMA_NODE && cat /proc/self/status | grep -E '(Cpus_allowed|Mems_allowed)' && sleep infinity"]
+      resources:
+        requests:
+          cpu: "1"
+          memory: 256Mi
+          numa-align/numa-1: 1
+        limits:
+          cpu: "1"
+          memory: 256Mi
+          numa-align/numa-1: 1
+  restartPolicy: Never

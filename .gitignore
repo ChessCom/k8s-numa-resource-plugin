@@ -1,0 +1,41 @@
+# Binaries
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test coverage
+coverage.out
+coverage.html
+
+# Go workspace
+go.work
+go.work.sum
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.log
+
+# Kubernetes secrets (never commit)
+*secret*.yaml
+*.pem
+*.key
+
+# Claude Code
+.claude/
+
+# Test cluster files
+test/infra/cluster-info.env
+test/infra/kubeconfig
