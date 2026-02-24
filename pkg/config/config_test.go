@@ -2,12 +2,14 @@ package config
 
 import (
 	"testing"
+	"time"
 )
 
 func TestLoad(t *testing.T) {
 	t.Run("defaults", func(t *testing.T) {
 		t.Setenv("NUMA_SOCKET_DIR", "")
 		t.Setenv("NUMA_CAPACITY", "")
+		t.Setenv("NUMA_REGISTRATION_TIMEOUT_SECONDS", "")
 
 		cfg := Load()
 
@@ -16,6 +18,42 @@ func TestLoad(t *testing.T) {
 		}
 		if cfg.Capacity != 100 {
 			t.Errorf("Expected capacity 100, got %d", cfg.Capacity)
+		}
+		// Zero means "no override"; the plugin package supplies the default.
+		if cfg.RegistrationTimeout != 0 {
+			t.Errorf("Expected no registration timeout override, got %s", cfg.RegistrationTimeout)
+		}
+	})
+
+	// 37s is deliberately an odd value that matches no default anywhere, so this
+	// case can only pass if the env var was actually parsed and applied.
+	t.Run("custom registration timeout", func(t *testing.T) {
+		t.Setenv("NUMA_REGISTRATION_TIMEOUT_SECONDS", "37")
+
+		cfg := Load()
+
+		if cfg.RegistrationTimeout != 37*time.Second {
+			t.Errorf("Expected registration timeout 37s, got %s", cfg.RegistrationTimeout)
+		}
+	})
+
+	t.Run("invalid registration timeout leaves no override", func(t *testing.T) {
+		t.Setenv("NUMA_REGISTRATION_TIMEOUT_SECONDS", "invalid")
+
+		cfg := Load()
+
+		if cfg.RegistrationTimeout != 0 {
+			t.Errorf("Expected no registration timeout override, got %s", cfg.RegistrationTimeout)
+		}
+	})
+
+	t.Run("zero registration timeout leaves no override", func(t *testing.T) {
+		t.Setenv("NUMA_REGISTRATION_TIMEOUT_SECONDS", "0")
+
+		cfg := Load()
+
+		if cfg.RegistrationTimeout != 0 {
+			t.Errorf("Expected no registration timeout override, got %s", cfg.RegistrationTimeout)
 		}
 	})
 

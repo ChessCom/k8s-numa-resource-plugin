@@ -7,6 +7,10 @@ KUBECONFIG=${KUBECONFIG:-/etc/rancher/rke2/rke2.yaml}
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MANIFEST_DIR="$SCRIPT_DIR/../manifests"
 
+# Count of tests skipped for lack of hardware. Set REQUIRE_ALL_TESTS=1 (e.g. in
+# CI, on a known multi-NUMA node) to make any skip a hard failure.
+skipped=0
+
 echo "=== Testing NUMA Resource Plugin ==="
 
 # Check if plugin is running
@@ -44,12 +48,17 @@ else
     exit 1
 fi
 
-# Test NUMA 1 allocation (if available)
+# Test NUMA 1 allocation (if any node advertises it)
 echo ""
 echo "4. Testing NUMA 1 allocation..."
-has_numa_1=$(kubectl --kubeconfig="$KUBECONFIG" get nodes -o jsonpath='{.items[0].status.allocatable.numa-align/numa-1}' 2>/dev/null || echo "")
+# Check every node, not just .items[0]: the first node in the list is typically
+# the single-NUMA control plane, so keying off it skipped this test even when a
+# multi-NUMA worker was present - and the run still reported success.
+numa_1_nodes=$(kubectl --kubeconfig="$KUBECONFIG" get nodes -o json 2>/dev/null \
+    | jq -r '[.items[] | select((.status.allocatable["numa-align/numa-1"] // "0") != "0")] | length' 2>/dev/null || echo 0)
+numa_1_nodes=${numa_1_nodes:-0}
 
-if [ -n "$has_numa_1" ] && [ "$has_numa_1" != "0" ]; then
+if [ "$numa_1_nodes" -gt 0 ]; then
     kubectl --kubeconfig="$KUBECONFIG" delete pod test-numa-1 --ignore-not-found
     kubectl --kubeconfig="$KUBECONFIG" apply -f "$MANIFEST_DIR/test-numa-1.yaml"
 
@@ -69,7 +78,8 @@ if [ -n "$has_numa_1" ] && [ "$has_numa_1" != "0" ]; then
         exit 1
     fi
 else
-    echo "   SKIP: NUMA 1 not available on this node"
+    echo "   SKIP: no node advertises numa-align/numa-1"
+    skipped=$((skipped + 1))
 fi
 
 # Cleanup
@@ -78,4 +88,16 @@ echo "5. Cleaning up test pods..."
 kubectl --kubeconfig="$KUBECONFIG" delete pod test-numa-0 test-numa-1 --ignore-not-found
 
 echo ""
-echo "=== All tests passed! ==="
+if [ "$skipped" -gt 0 ]; then
+    # Never report a clean pass over a skipped test: a run that silently skips
+    # the multi-NUMA path looks identical to one that actually exercised it.
+    echo "=== Tests passed, but $skipped test(s) were SKIPPED - see above ==="
+    if [ -n "$REQUIRE_ALL_TESTS" ]; then
+        echo "    REQUIRE_ALL_TESTS is set - treating skips as failure"
+        exit 1
+    fi
+else
+    echo "=== All tests passed! ==="
+fi
+
+exit 0

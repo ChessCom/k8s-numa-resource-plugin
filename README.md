@@ -127,6 +127,7 @@ Environment variables for the plugin:
 |----------|---------|-------------|
 | `NUMA_CAPACITY` | `100` | Number of pods that can request each NUMA node |
 | `NUMA_SOCKET_DIR` | auto-detect | Override socket directory |
+| `NUMA_REGISTRATION_TIMEOUT_SECONDS` | `45` | Max time to retry kubelet registration before giving up; on timeout the plugin exits so the pod restarts. Keep below the liveness probe's kill window — `(failureThreshold - 1)` × `periodSeconds`, i.e. 60s by default — minus ~5s of socket-loss detection |
 
 ## Multi-Container Pods
 

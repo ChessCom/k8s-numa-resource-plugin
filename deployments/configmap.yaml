@@ -7,3 +7,16 @@ data:
   # Capacity per NUMA node (default: 100)
   # Higher values allow more pods to request the same NUMA node
   NUMA_CAPACITY: "100"
+
+  # Max seconds to retry kubelet registration before giving up (default: 45).
+  # On timeout the plugin stops every NUMA node and exits, so the DaemonSet
+  # restarts the pod and retries from a clean slate — rather than leaving the
+  # node registered for only some of its NUMA nodes.
+  #
+  # Keep this below the liveness probe's kill window so the plugin exits on its
+  # own terms, with a clear log line, instead of being killed mid-retry. That
+  # window is NOT periodSeconds × failureThreshold: three failures 30s apart
+  # span 60s from the first failure to the kill, so 60s is the floor (90s is
+  # only the best case). Allowing up to 5s for the plugin to notice the socket
+  # is gone, the budget must stay under ~55s.
+  NUMA_REGISTRATION_TIMEOUT_SECONDS: "45"

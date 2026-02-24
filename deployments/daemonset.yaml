@@ -51,6 +51,12 @@ spec:
                 - "ls /var/lib/kubelet/device-plugins/numa-*.sock >/dev/null 2>&1"
             initialDelaySeconds: 10
             periodSeconds: 30
+            # Explicit (matches the default) because NUMA_REGISTRATION_TIMEOUT_SECONDS
+            # is sized against it: the plugin should exit on its own with a clear
+            # log line, not be killed mid-retry. Note the usable window is the
+            # span between the first and last failing probe — (failureThreshold-1)
+            # × periodSeconds = 60s here — not failureThreshold × periodSeconds.
+            failureThreshold: 3
           volumeMounts:
             # Standard kubelet device-plugins directory
             - name: device-plugin-kubelet
