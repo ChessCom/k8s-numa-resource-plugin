@@ -128,6 +128,64 @@ Environment variables for the plugin:
 | `NUMA_CAPACITY` | `100` | Number of pods that can request each NUMA node |
 | `NUMA_SOCKET_DIR` | auto-detect | Override socket directory |
 
+## Multi-Container Pods
+
+For NUMA pinning to work, the pod must have **Guaranteed QoS** — every container (including init containers and sidecars) must have `requests == limits` for both CPU and memory, with integer CPU values.
+
+### Init containers must request the NUMA resource
+
+The CPU Manager tracks init container CPUs as "reusable" since they are freed before regular containers start. During pod admission, it biases topology hints toward the NUMA node where those reusable CPUs were allocated. If the first init container lands on the wrong NUMA node (because it didn't request `numa-align`), subsequent containers that *do* require a specific NUMA node may fail with `TopologyAffinityError`.
+
+**At minimum, the first init container must request the same `numa-align/numa-N` resource as the main workload.** Subsequent init containers will follow automatically via the reusable CPU bias.
+
+### Sidecar containers
+
+Regular sidecar containers (e.g., monitoring agents) don't strictly need the `numa-align` resource — they will be placed on whatever NUMA node has available CPUs. This is acceptable for lightweight workloads where cross-NUMA memory latency doesn't matter. The primary workload container should always have the request.
+
+### Example: Pod with init container and sidecar
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: numa-pinned-app
+spec:
+  initContainers:
+    - name: init
+      image: busybox:latest
+      command: ["sh", "-c", "echo initializing && sleep 5"]
+      resources:
+        requests:
+          cpu: "1"
+          memory: 128Mi
+          numa-align/numa-0: 1    # Required to anchor NUMA placement
+        limits:
+          cpu: "1"
+          memory: 128Mi
+          numa-align/numa-0: 1
+  containers:
+    - name: app
+      image: myapp:latest
+      resources:
+        requests:
+          cpu: "4"
+          memory: 8Gi
+          numa-align/numa-0: 1
+        limits:
+          cpu: "4"
+          memory: 8Gi
+          numa-align/numa-0: 1
+    - name: metrics
+      image: metricbeat:latest
+      resources:
+        requests:
+          cpu: "1"              # Guaranteed QoS required, numa-align optional
+          memory: 256Mi
+        limits:
+          cpu: "1"
+          memory: 256Mi
+```
+
 ## How It Works
 
 1. **Discovery**: On startup, the plugin reads `/sys/devices/system/node/online` to discover NUMA nodes
